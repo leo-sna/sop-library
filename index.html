@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Guide Library</title>
+
+<style>
+*{
+box-sizing:border-box;
+}
+
+body{
+margin:40px;
+font-family:Arial, sans-serif;
+background:#f7f9f8;
+color:#2f3a3d;
+}
+
+h1{
+margin:0 0 10px 0;
+font-size:32px;
+color:#2f3a3d;
+}
+
+.library-intro{
+margin:0 0 24px 0;
+font-size:15px;
+color:#5e6b70;
+max-width:760px;
+line-height:1.45;
+}
+
+.controls-wrap{
+background:#ffffff;
+border-radius:16px;
+padding:22px;
+box-shadow:0 8px 24px rgba(0,0,0,.06);
+margin-bottom:26px;
+}
+
+.search-row{
+display:flex;
+gap:14px;
+align-items:center;
+flex-wrap:wrap;
+}
+
+.search-box{
+flex:1 1 320px;
+position:relative;
+}
+
+.search-box input{
+width:100%;
+padding:14px 16px;
+border:1px solid #d8dfdc;
+border-radius:12px;
+font-size:15px;
+outline:none;
+background:#fff;
+transition:border-color .2s, box-shadow .2s;
+}
+
+.search-box input:focus{
+border-color:#7ea2ad;
+box-shadow:0 0 0 3px rgba(126,162,173,.16);
+}
+
+.clear-btn{
+padding:12px 16px;
+border:none;
+border-radius:12px;
+background:#e8efec;
+color:#425155;
+font-size:14px;
+cursor:pointer;
+transition:.2s;
+}
+
+.clear-btn:hover{
+background:#dbe5e1;
+}
+
+.filters{
+margin-top:18px;
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
+
+.filters button{
+padding:9px 16px;
+border:none;
+border-radius:999px;
+background:#e6ece9;
+color:#425155;
+cursor:pointer;
+font-size:14px;
+transition:.2s;
+}
+
+.filters button:hover{
+background:#dbe5e1;
+}
+
+.filters button.active{
+background:#7ea2ad;
+color:#fff;
+}
+
+.results-meta{
+display:flex;
+justify-content:space-between;
+align-items:center;
+gap:12px;
+flex-wrap:wrap;
+margin-bottom:16px;
+}
+
+.results-count{
+font-size:14px;
+color:#5e6b70;
+}
+
+.results-note{
+font-size:13px;
+color:#7a878c;
+}
+
+.guides-grid{
+display:grid;
+grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+gap:20px;
+}
+
+.guide-card{
+background:#ffffff;
+border-radius:16px;
+padding:20px;
+box-shadow:0 8px 24px rgba(0,0,0,.06);
+display:flex;
+flex-direction:column;
+min-height:210px;
+transition:transform .2s, box-shadow .2s;
+}
+
+.guide-card:hover{
+transform:translateY(-3px);
+box-shadow:0 10px 28px rgba(0,0,0,.08);
+}
+
+.guide-top{
+display:flex;
+justify-content:space-between;
+align-items:flex-start;
+gap:10px;
+margin-bottom:14px;
+}
+
+.guide-category{
+display:inline-block;
+padding:6px 10px;
+border-radius:999px;
+background:#eef4f2;
+color:#5a7078;
+font-size:12px;
+font-weight:700;
+letter-spacing:.2px;
+}
+
+.guide-title{
+margin:0 0 8px 0;
+font-size:21px;
+line-height:1.2;
+color:#2f3a3d;
+}
+
+.guide-description{
+margin:0 0 16px 0;
+font-size:14px;
+line-height:1.45;
+color:#627176;
+flex-grow:1;
+}
+
+.guide-keywords{
+display:flex;
+flex-wrap:wrap;
+gap:8px;
+margin:0 0 18px 0;
+}
+
+.keyword-pill{
+padding:5px 9px;
+border-radius:999px;
+background:#f3f6f5;
+color:#6f7e83;
+font-size:12px;
+}
+
+.guide-actions{
+margin-top:auto;
+}
+
+.guide-link{
+display:inline-flex;
+align-items:center;
+justify-content:center;
+min-width:132px;
+padding:11px 16px;
+border-radius:12px;
+text-decoration:none;
+background:#7ea2ad;
+color:#fff;
+font-size:14px;
+font-weight:700;
+transition:.2s;
+}
+
+.guide-link:hover{
+background:#6b929e;
+}
+
+.empty-state{
+background:#ffffff;
+border-radius:16px;
+padding:34px 24px;
+box-shadow:0 8px 24px rgba(0,0,0,.06);
+text-align:center;
+color:#617075;
+}
+
+.empty-state h2{
+margin:0 0 8px 0;
+font-size:22px;
+color:#374347;
+}
+
+.empty-state p{
+margin:0;
+font-size:14px;
+line-height:1.45;
+}
+
+.loading-state{
+background:#ffffff;
+border-radius:16px;
+padding:28px 24px;
+box-shadow:0 8px 24px rgba(0,0,0,.06);
+font-size:15px;
+color:#617075;
+}
+
+.error-state{
+background:#fff4f4;
+border:1px solid #f1d6d6;
+border-radius:16px;
+padding:20px;
+color:#8a4d4d;
+}
+
+@media (max-width:700px){
+body{
+margin:20px;
+}
+
+h1{
+font-size:28px;
+}
+
+.controls-wrap{
+padding:18px;
+}
+
+.guide-card{
+min-height:unset;
+}
+}
+</style>
+</head>
+<body>
+
+<h1 style="background: linear-gradient(45deg,#396270, #6D8591); color: #ffffff !important; padding: 30px 20px; border-radius: 6px;">Knowledge Hub</h1>
+
+<div class="controls-wrap">
+  <div class="search-row">
+    <div class="search-box">
+      <input id="searchBar" type="text" placeholder="Search by title, keywords, or categories">
+    </div>
+    <button id="clearSearch" class="clear-btn" type="button">Clear</button>
+  </div>
+
+  <div id="categoryFilters" class="filters"></div>
+</div>
+
+<div class="results-meta">
+  <div id="resultsCount" class="results-count">Loading guides...</div>
+</div>
+
+<div id="libraryContent">
+  <div class="loading-state">Loading guide library...</div>
+</div>
+
+<script>
+const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRYEq_WVhwhdfTX-CmPMfkw2MM60yM3wfyq5e_tbLCoKz1sfQP2N2Q2gchpe1YieSz87OkdjIfyJqS3/pub?output=csv";
+
+let guideData = [];
+let activeCategory = "all";
+
+const searchBar = document.getElementById("searchBar");
+const clearSearch = document.getElementById("clearSearch");
+const categoryFilters = document.getElementById("categoryFilters");
+const libraryContent = document.getElementById("libraryContent");
+const resultsCount = document.getElementById("resultsCount");
+
+fetch(sheetURL)
+.then(res => {
+  if(!res.ok){
+    throw new Error("Unable to load Google Sheet.");
+  }
+  return res.text();
+})
+.then(data => {
+  const rows = parseCSV(data);
+
+  if(rows.length < 2){
+    throw new Error("The Google Sheet appears to be empty.");
+  }
+
+  const headers = rows[0].map(h => normalizeHeader(h));
+  const bodyRows = rows.slice(1);
+
+  guideData = bodyRows
+    .map(cols => mapRowToGuide(headers, cols))
+    .filter(guide => guide.title && guide.url && guide.status !== "inactive");
+
+  buildCategoryFilters();
+  renderGuides(filterGuides());
+})
+.catch(err => {
+  libraryContent.innerHTML = `
+    <div class="error-state">
+      <strong>Guide library could not load.</strong><br>
+      ${escapeHTML(err.message)}
+    </div>
+  `;
+  resultsCount.textContent = "0 guides";
+});
+
+function parseCSV(text){
+  const rows = [];
+  let row = [];
+  let current = "";
+  let inQuotes = false;
+
+  for(let i = 0; i < text.length; i++){
+    const char = text[i];
+    const next = text[i + 1];
+
+    if(char === '"'){
+      if(inQuotes && next === '"'){
+        current += '"';
+        i++;
+      }else{
+        inQuotes = !inQuotes;
+      }
+    }else if(char === "," && !inQuotes){
+      row.push(current);
+      current = "";
+    }else if((char === "\n" || char === "\r") && !inQuotes){
+      if(char === "\r" && next === "\n"){
+        i++;
+      }
+
+      row.push(current);
+
+      const hasContent = row.some(cell => cell.trim() !== "");
+      if(hasContent){
+        rows.push(row);
+      }
+
+      row = [];
+      current = "";
+    }else{
+      current += char;
+    }
+  }
+
+  if(current.length > 0 || row.length > 0){
+    row.push(current);
+    const hasContent = row.some(cell => cell.trim() !== "");
+    if(hasContent){
+      rows.push(row);
+    }
+  }
+
+  return rows;
+}
+
+function normalizeHeader(header){
+  return header.trim().toLowerCase().replace(/\s+/g, "_");
+}
+
+function mapRowToGuide(headers, cols){
+  const rowObj = {};
+  headers.forEach((header, index) => {
+    rowObj[header] = (cols[index] || "").trim();
+  });
+
+  const keywords = (rowObj.keywords || "")
+    .split(",")
+    .map(k => k.trim())
+    .filter(Boolean);
+
+  return {
+    title: rowObj.title || "",
+    category: rowObj.category || "General",
+    keywords,
+    description: rowObj.description || "",
+    url: rowObj.url || "",
+    buttonLabel: rowObj.button_label || "Open Guide",
+    status: (rowObj.status || "active").toLowerCase(),
+    sortOrder: Number(rowObj.sort_order || 9999)
+  };
+}
+
+function buildCategoryFilters(){
+  const categories = [...new Set(
+    guideData
+      .map(guide => guide.category)
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b));
+
+  categoryFilters.innerHTML = `<button class="active" data-category="all" type="button">All</button>`;
+
+  categories.forEach(category => {
+    categoryFilters.innerHTML += `<button data-category="${escapeAttribute(category)}" type="button">${escapeHTML(category)}</button>`;
+  });
+}
+
+categoryFilters.addEventListener("click", function(e){
+  if(!e.target.matches("button")) return;
+
+  document.querySelectorAll("#categoryFilters button").forEach(btn => {
+    btn.classList.remove("active");
+  });
+
+  e.target.classList.add("active");
+  activeCategory = e.target.dataset.category || "all";
+  renderGuides(filterGuides());
+});
+
+searchBar.addEventListener("input", function(){
+  renderGuides(filterGuides());
+});
+
+clearSearch.addEventListener("click", function(){
+  searchBar.value = "";
+  activeCategory = "all";
+
+  document.querySelectorAll("#categoryFilters button").forEach(btn => {
+    btn.classList.remove("active");
+    if(btn.dataset.category === "all"){
+      btn.classList.add("active");
+    }
+  });
+
+  renderGuides(filterGuides());
+  searchBar.focus();
+});
+
+function filterGuides(){
+  const term = searchBar.value.trim().toLowerCase();
+
+  let filtered = guideData.filter(guide => {
+    if(activeCategory === "all") return true;
+    return guide.category === activeCategory;
+  });
+
+  if(!term){
+    return filtered.sort(sortGuides);
+  }
+
+  filtered = filtered.filter(guide => {
+    const haystack = [
+      guide.title,
+      guide.category,
+      guide.description,
+      ...guide.keywords
+    ]
+    .join(" ")
+    .toLowerCase();
+
+    return haystack.includes(term);
+  });
+
+  return filtered.sort((a, b) => {
+    const aScore = getMatchScore(a, term);
+    const bScore = getMatchScore(b, term);
+
+    if(bScore !== aScore){
+      return bScore - aScore;
+    }
+
+    return sortGuides(a, b);
+  });
+}
+
+function getMatchScore(guide, term){
+  let score = 0;
+
+  const title = guide.title.toLowerCase();
+  const category = guide.category.toLowerCase();
+  const description = guide.description.toLowerCase();
+  const keywords = guide.keywords.map(k => k.toLowerCase());
+
+  if(title === term) score += 100;
+  if(keywords.includes(term)) score += 90;
+  if(title.startsWith(term)) score += 70;
+  if(keywords.some(k => k.startsWith(term))) score += 60;
+  if(title.includes(term)) score += 40;
+  if(keywords.some(k => k.includes(term))) score += 35;
+  if(category.includes(term)) score += 20;
+  if(description.includes(term)) score += 10;
+
+  return score;
+}
+
+function sortGuides(a, b){
+  if(a.sortOrder !== b.sortOrder){
+    return a.sortOrder - b.sortOrder;
+  }
+  return a.title.localeCompare(b.title);
+}
+
+function renderGuides(list){
+  resultsCount.textContent = `${list.length} guide${list.length === 1 ? "" : "s"} found`;
+
+  if(list.length === 0){
+    libraryContent.innerHTML = `
+      <div class="empty-state">
+        <h2>No matching guides found</h2>
+        <p>Try a different keyword, abbreviation, title, or category.</p>
+      </div>
+    `;
+    return;
+  }
+
+  libraryContent.innerHTML = `
+    <div class="guides-grid">
+      ${list.map(renderGuideCard).join("")}
+    </div>
+  `;
+}
+
+function renderGuideCard(guide){
+  return `
+    <div class="guide-card">
+      <div class="guide-top">
+        <span class="guide-category">${escapeHTML(guide.category)}</span>
+      </div>
+
+      <h2 class="guide-title">${escapeHTML(guide.title)}</h2>
+
+      ${guide.description ? `<p class="guide-description">${escapeHTML(guide.description)}</p>` : `<p class="guide-description"></p>`}
+
+      <div class="guide-actions">
+        <a class="guide-link" href="${escapeAttribute(guide.url)}" target="_top" rel="noopener noreferrer">
+          ${escapeHTML(guide.buttonLabel || "Open Guide")}
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+function escapeHTML(str){
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function escapeAttribute(str){
+  return String(str).replace(/"/g, "&quot;");
+}
+</script>
+
+</body>
+</html>
