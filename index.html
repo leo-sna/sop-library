@@ -286,7 +286,7 @@ min-height:unset;
 <div class="controls-wrap">
   <div class="search-row">
     <div class="search-box">
-      <input id="searchBar" type="text" placeholder="Search by title, keywords, or categories">
+      <input id="searchBar" type="text" placeholder="Type a topic or question">
     </div>
     <button id="clearSearch" class="clear-btn" type="button">Clear</button>
   </div>
@@ -471,33 +471,27 @@ clearSearch.addEventListener("click", function(){
 });
 
 function filterGuides(){
-  const term = searchBar.value.trim().toLowerCase();
+  const rawTerm = searchBar.value.trim().toLowerCase();
 
   let filtered = guideData.filter(guide => {
     if(activeCategory === "all") return true;
     return guide.category === activeCategory;
   });
 
-  if(!term){
+  if(!rawTerm){
     return filtered.sort(sortGuides);
   }
 
-  filtered = filtered.filter(guide => {
-    const haystack = [
-      guide.title,
-      guide.category,
-      guide.description,
-      ...guide.keywords
-    ]
-    .join(" ")
-    .toLowerCase();
+  const normalizedSearch = normalizeText(rawTerm);
+  const searchTokens = getMeaningfulTokens(normalizedSearch);
 
-    return haystack.includes(term);
+  filtered = filtered.filter(guide => {
+    return isGuideMatch(guide, normalizedSearch, searchTokens);
   });
 
   return filtered.sort((a, b) => {
-    const aScore = getMatchScore(a, term);
-    const bScore = getMatchScore(b, term);
+    const aScore = getMatchScore(a, normalizedSearch, searchTokens);
+    const bScore = getMatchScore(b, normalizedSearch, searchTokens);
 
     if(bScore !== aScore){
       return bScore - aScore;
@@ -507,24 +501,90 @@ function filterGuides(){
   });
 }
 
-function getMatchScore(guide, term){
+function getMatchScore(guide, normalizedSearch, searchTokens){
   let score = 0;
 
-  const title = guide.title.toLowerCase();
-  const category = guide.category.toLowerCase();
-  const description = guide.description.toLowerCase();
-  const keywords = guide.keywords.map(k => k.toLowerCase());
+  const title = normalizeText(guide.title);
+  const category = normalizeText(guide.category);
+  const description = normalizeText(guide.description);
+  const keywords = guide.keywords.map(k => normalizeText(k));
+  const fullText = [title, category, description, ...keywords].join(" ");
 
-  if(title === term) score += 100;
-  if(keywords.includes(term)) score += 90;
-  if(title.startsWith(term)) score += 70;
-  if(keywords.some(k => k.startsWith(term))) score += 60;
-  if(title.includes(term)) score += 40;
-  if(keywords.some(k => k.includes(term))) score += 35;
-  if(category.includes(term)) score += 20;
-  if(description.includes(term)) score += 10;
+  if(title === normalizedSearch) score += 120;
+  if(keywords.includes(normalizedSearch)) score += 110;
+
+  if(title.includes(normalizedSearch)) score += 80;
+  if(keywords.some(k => k.includes(normalizedSearch))) score += 75;
+  if(description.includes(normalizedSearch)) score += 30;
+
+  searchTokens.forEach(token => {
+    if(title.includes(token)) score += 18;
+    if(keywords.some(k => k.includes(token))) score += 16;
+    if(category.includes(token)) score += 8;
+    if(description.includes(token)) score += 6;
+    if(fullText.includes(token)) score += 3;
+  });
+
+  const matchedTokens = searchTokens.filter(token => fullText.includes(token)).length;
+  score += matchedTokens * 10;
+
+  if(searchTokens.length > 1 && matchedTokens === searchTokens.length){
+    score += 40;
+  }
 
   return score;
+}
+
+function normalizeText(text){
+  return String(text || "")
+    .toLowerCase()
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function getMeaningfulTokens(text){
+  const stopWords = new Set([
+    "how","to","do","i","a","an","the","for","of","and","or","in","on","at",
+    "with","is","are","can","you","me","my","find","open","view","see","fill",
+    "out","where","what","when","why","guide","cheat","sheet"
+  ]);
+
+  return [...new Set(
+    text
+      .split(" ")
+      .map(word => word.trim())
+      .filter(word => word.length > 1 && !stopWords.has(word))
+  )];
+}
+
+function isGuideMatch(guide, normalizedSearch, searchTokens){
+  const title = normalizeText(guide.title);
+  const category = normalizeText(guide.category);
+  const description = normalizeText(guide.description);
+  const keywords = guide.keywords.map(k => normalizeText(k));
+  const fullText = [title, category, description, ...keywords].join(" ");
+
+  if(
+    title.includes(normalizedSearch) ||
+    category.includes(normalizedSearch) ||
+    description.includes(normalizedSearch) ||
+    keywords.some(k => k.includes(normalizedSearch))
+  ){
+    return true;
+  }
+
+  if(searchTokens.length === 0){
+    return false;
+  }
+
+  const matchedTokens = searchTokens.filter(token => fullText.includes(token)).length;
+
+  if(searchTokens.length === 1){
+    return matchedTokens >= 1;
+  }
+
+  return matchedTokens >= Math.max(2, Math.ceil(searchTokens.length * 0.5));
 }
 
 function sortGuides(a, b){
