@@ -308,6 +308,7 @@ const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRYEq_WVhwhdfT
 let guideData = [];
 let activeCategory = "all";
 
+const requestFormURL = "https://my.stevensinsurance.com/portal/dashboard/view/164958";
 const searchBar = document.getElementById("searchBar");
 const clearSearch = document.getElementById("clearSearch");
 const categoryFilters = document.getElementById("categoryFilters");
@@ -601,7 +602,12 @@ function renderGuides(list){
     libraryContent.innerHTML = `
       <div class="empty-state">
         <h2>No matching guides found</h2>
-        <p>Try a different keyword, abbreviation, title, or category.</p>
+        <p>Not finding what you're looking for? Let  us know!</p>
+        <div style="margin-top:18px;">
+          <a class="guide-link" href="${escapeAttribute(requestFormURL)}" target="_top" rel="noopener noreferrer">
+            Submit a Question
+          </a>
+        </div>
       </div>
     `;
     return;
