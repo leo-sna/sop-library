@@ -123,11 +123,6 @@ font-size:14px;
 color:#5e6b70;
 }
 
-.results-note{
-font-size:13px;
-color:#7a878c;
-}
-
 .guides-grid{
 display:grid;
 grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
@@ -182,21 +177,6 @@ font-size:14px;
 line-height:1.45;
 color:#627176;
 flex-grow:1;
-}
-
-.guide-keywords{
-display:flex;
-flex-wrap:wrap;
-gap:8px;
-margin:0 0 18px 0;
-}
-
-.keyword-pill{
-padding:5px 9px;
-border-radius:999px;
-background:#f3f6f5;
-color:#6f7e83;
-font-size:12px;
 }
 
 .guide-actions{
@@ -304,50 +284,67 @@ min-height:unset;
 
 <script>
 const sheetURL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRYEq_WVhwhdfTX-CmPMfkw2MM60yM3wfyq5e_tbLCoKz1sfQP2N2Q2gchpe1YieSz87OkdjIfyJqS3/pub?output=csv";
+const requestFormURL = "https://my.stevensinsurance.com/portal/dashboard/view/164958";
 
 let guideData = [];
 let activeCategory = "all";
 
-const requestFormURL = "https://my.stevensinsurance.com/portal/dashboard/view/164958";
 const searchBar = document.getElementById("searchBar");
 const clearSearch = document.getElementById("clearSearch");
 const categoryFilters = document.getElementById("categoryFilters");
 const libraryContent = document.getElementById("libraryContent");
 const resultsCount = document.getElementById("resultsCount");
 
-fetch(sheetURL)
-.then(res => {
-  if(!res.ok){
-    throw new Error("Unable to load Google Sheet.");
+loadGuides();
+
+window.addEventListener("pageshow", function(e){
+  if(e.persisted){
+    loadGuides();
+  }else{
+    resetLibraryState();
   }
-  return res.text();
-})
-.then(data => {
-  const rows = parseCSV(data);
-
-  if(rows.length < 2){
-    throw new Error("The Google Sheet appears to be empty.");
-  }
-
-  const headers = rows[0].map(h => normalizeHeader(h));
-  const bodyRows = rows.slice(1);
-
-  guideData = bodyRows
-    .map(cols => mapRowToGuide(headers, cols))
-    .filter(guide => guide.title && guide.url && guide.status !== "inactive");
-
-  buildCategoryFilters();
-  renderGuides(filterGuides());
-})
-.catch(err => {
-  libraryContent.innerHTML = `
-    <div class="error-state">
-      <strong>Guide library could not load.</strong><br>
-      ${escapeHTML(err.message)}
-    </div>
-  `;
-  resultsCount.textContent = "0 guides";
 });
+
+function loadGuides(){
+  libraryContent.innerHTML = `
+    <div class="loading-state">Loading guide library...</div>
+  `;
+  resultsCount.textContent = "Loading guides...";
+
+  fetch(sheetURL + "&t=" + Date.now(), { cache: "no-store" })
+  .then(res => {
+    if(!res.ok){
+      throw new Error("Unable to load Google Sheet.");
+    }
+    return res.text();
+  })
+  .then(data => {
+    const rows = parseCSV(data);
+
+    if(rows.length < 2){
+      throw new Error("The Google Sheet appears to be empty.");
+    }
+
+    const headers = rows[0].map(h => normalizeHeader(h));
+    const bodyRows = rows.slice(1);
+
+    guideData = bodyRows
+      .map(cols => mapRowToGuide(headers, cols))
+      .filter(guide => guide.title && guide.url && guide.status !== "inactive");
+
+    buildCategoryFilters();
+    resetLibraryState();
+  })
+  .catch(err => {
+    libraryContent.innerHTML = `
+      <div class="error-state">
+        <strong>Guide library could not load.</strong><br>
+        ${escapeHTML(err.message)}
+      </div>
+    `;
+    resultsCount.textContent = "0 guides";
+  });
+}
 
 function parseCSV(text){
   const rows = [];
@@ -417,7 +414,7 @@ function mapRowToGuide(headers, cols){
   return {
     title: rowObj.title || "",
     category: rowObj.category || "General",
-    keywords,
+    keywords: keywords,
     description: rowObj.description || "",
     url: rowObj.url || "",
     buttonLabel: rowObj.button_label || "Open Guide",
@@ -440,6 +437,20 @@ function buildCategoryFilters(){
   });
 }
 
+function resetLibraryState(){
+  searchBar.value = "";
+  activeCategory = "all";
+
+  document.querySelectorAll("#categoryFilters button").forEach(btn => {
+    btn.classList.remove("active");
+    if(btn.dataset.category === "all"){
+      btn.classList.add("active");
+    }
+  });
+
+  renderGuides(filterGuides());
+}
+
 categoryFilters.addEventListener("click", function(e){
   if(!e.target.matches("button")) return;
 
@@ -457,42 +468,29 @@ searchBar.addEventListener("input", function(){
 });
 
 clearSearch.addEventListener("click", function(){
-  searchBar.value = "";
-  activeCategory = "all";
-
-  document.querySelectorAll("#categoryFilters button").forEach(btn => {
-    btn.classList.remove("active");
-    if(btn.dataset.category === "all"){
-      btn.classList.add("active");
-    }
-  });
-
-  renderGuides(filterGuides());
+  resetLibraryState();
   searchBar.focus();
 });
 
 function filterGuides(){
-  const rawTerm = searchBar.value.trim().toLowerCase();
+  const rawTerm = searchBar.value.trim();
 
   let filtered = guideData.filter(guide => {
     if(activeCategory === "all") return true;
-    return guide.category === activeCategory;
+    return normalizeText(guide.category) === normalizeText(activeCategory);
   });
 
   if(!rawTerm){
     return filtered.sort(sortGuides);
   }
 
-  const normalizedSearch = normalizeText(rawTerm);
-  const searchTokens = getMeaningfulTokens(normalizedSearch);
+  const searchTokens = getSearchTokens(rawTerm);
 
-  filtered = filtered.filter(guide => {
-    return isGuideMatch(guide, normalizedSearch, searchTokens);
-  });
+  filtered = filtered.filter(guide => isGuideMatch(guide, searchTokens));
 
   return filtered.sort((a, b) => {
-    const aScore = getMatchScore(a, normalizedSearch, searchTokens);
-    const bScore = getMatchScore(b, normalizedSearch, searchTokens);
+    const aScore = getMatchScore(a, searchTokens);
+    const bScore = getMatchScore(b, searchTokens);
 
     if(bScore !== aScore){
       return bScore - aScore;
@@ -502,90 +500,78 @@ function filterGuides(){
   });
 }
 
-function getMatchScore(guide, normalizedSearch, searchTokens){
+function isGuideMatch(guide, searchTokens){
+  if(searchTokens.length === 0) return true;
+
+  const searchableWords = getSearchableWords(guide);
+
+  return searchTokens.some(token => searchableWords.has(token));
+}
+
+function getMatchScore(guide, searchTokens){
+  const titleWords = getNormalizedWordSet(guide.title);
+  const categoryWords = getNormalizedWordSet(guide.category);
+  const descriptionWords = getNormalizedWordSet(guide.description);
+  const keywordWords = new Set(
+    (guide.keywords || []).flatMap(keyword => [...getNormalizedWordSet(keyword)])
+  );
+
   let score = 0;
 
-  const title = normalizeText(guide.title);
-  const category = normalizeText(guide.category);
-  const description = normalizeText(guide.description);
-  const keywords = guide.keywords.map(k => normalizeText(k));
-  const fullText = [title, category, description, ...keywords].join(" ");
-
-  if(title === normalizedSearch) score += 120;
-  if(keywords.includes(normalizedSearch)) score += 110;
-
-  if(title.includes(normalizedSearch)) score += 80;
-  if(keywords.some(k => k.includes(normalizedSearch))) score += 75;
-  if(description.includes(normalizedSearch)) score += 30;
-
   searchTokens.forEach(token => {
-    if(title.includes(token)) score += 18;
-    if(keywords.some(k => k.includes(token))) score += 16;
-    if(category.includes(token)) score += 8;
-    if(description.includes(token)) score += 6;
-    if(fullText.includes(token)) score += 3;
+    if(titleWords.has(token)) score += 30;
+    if(keywordWords.has(token)) score += 30;
+    if(categoryWords.has(token)) score += 20;
+    if(descriptionWords.has(token)) score += 20;
   });
-
-  const matchedTokens = searchTokens.filter(token => fullText.includes(token)).length;
-  score += matchedTokens * 10;
-
-  if(searchTokens.length > 1 && matchedTokens === searchTokens.length){
-    score += 40;
-  }
 
   return score;
 }
 
-function normalizeText(text){
-  return String(text || "")
-    .toLowerCase()
-    .replace(/[^\w\s]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function getSearchableWords(guide){
+  return new Set([
+    ...getNormalizedWordSet(guide.title),
+    ...getNormalizedWordSet(guide.category),
+    ...getNormalizedWordSet(guide.description),
+    ...(guide.keywords || []).flatMap(keyword => [...getNormalizedWordSet(keyword)])
+  ]);
 }
 
-function getMeaningfulTokens(text){
+function getSearchTokens(text){
   const stopWords = new Set([
-    "how","to","do","i","a","an","the","for","of","and","or","in","on","at",
-    "with","is","are","can","you","me","my","find","open","view","see","fill",
-    "out","where","what","when","why","guide","cheat","sheet"
+    "a","an","and","are","as","at","be","between","but","by","can","difference","do",
+    "for","from","how","i","in","into","is","it","me","my","of","on","or","so","same",
+    "that","the","their","this","to","vs","versus","what","when","where","which","who",
+    "why","with","you","your"
   ]);
 
   return [...new Set(
-    text
+    normalizeText(text)
       .split(" ")
       .map(word => word.trim())
       .filter(word => word.length > 1 && !stopWords.has(word))
   )];
 }
 
-function isGuideMatch(guide, normalizedSearch, searchTokens){
-  const title = normalizeText(guide.title);
-  const category = normalizeText(guide.category);
-  const description = normalizeText(guide.description);
-  const keywords = guide.keywords.map(k => normalizeText(k));
-  const fullText = [title, category, description, ...keywords].join(" ");
+function normalizeText(text){
+  return String(text || "")
+    .toLowerCase()
+    .replace(/&/g, " and ")
+    .replace(/[^\w\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-  if(
-    title.includes(normalizedSearch) ||
-    category.includes(normalizedSearch) ||
-    description.includes(normalizedSearch) ||
-    keywords.some(k => k.includes(normalizedSearch))
-  ){
-    return true;
-  }
+function getNormalizedWordSet(text){
+  const normalized = normalizeText(text);
+  if(!normalized) return new Set();
 
-  if(searchTokens.length === 0){
-    return false;
-  }
-
-  const matchedTokens = searchTokens.filter(token => fullText.includes(token)).length;
-
-  if(searchTokens.length === 1){
-    return matchedTokens >= 1;
-  }
-
-  return matchedTokens >= Math.max(2, Math.ceil(searchTokens.length * 0.5));
+  return new Set(
+    normalized
+      .split(" ")
+      .map(word => word.trim())
+      .filter(Boolean)
+  );
 }
 
 function sortGuides(a, b){
@@ -602,7 +588,7 @@ function renderGuides(list){
     libraryContent.innerHTML = `
       <div class="empty-state">
         <h2>No matching guides found</h2>
-        <p>Not finding what you're looking for? Let  us know!</p>
+        <p>Not finding what you're looking for? Let us know!</p>
         <div style="margin-top:18px;">
           <a class="guide-link" href="${escapeAttribute(requestFormURL)}" target="_top" rel="noopener noreferrer">
             Submit a Question
